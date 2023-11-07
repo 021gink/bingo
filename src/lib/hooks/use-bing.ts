@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { chatFamily, bingConversationStyleAtom, GreetMessages, hashAtom, voiceAtom, chatHistoryAtom, isImageOnly } from '@/state'
+import { chatFamily, bingConversationStyleAtom, GreetMessages, hashAtom, voiceAtom, chatHistoryAtom, isImageOnly, sydneyAtom, sydneyPrompts } from '@/state'
 import { ChatMessageModel, BotId, FileItem } from '@/lib/bots/bing/types'
 import { nanoid } from '../utils'
 import { TTS } from '../bots/bing/tts'
@@ -12,6 +12,7 @@ export function useBing(botId: BotId = 'bing') {
   const [chatState, setChatState] = useAtom(chatAtom)
   const setHistoryValue = useSetAtom(chatHistoryAtom)
   const [enableTTS] = useAtom(voiceAtom)
+  const [enableSydney] = useAtom(sydneyAtom)
   const speaker = useMemo(() => new TTS(), [])
   const [hash, setHash] = useAtom(hashAtom)
   const bingConversationStyle = useAtomValue(bingConversationStyleAtom)
@@ -49,10 +50,10 @@ export function useBing(botId: BotId = 'bing') {
       await chatState.bot.sendMessage({
         prompt: input,
         imageUrl: !isImageOnly && imageUrl && /api\/blob.jpg\?bcid=([^&]+)/.test(imageUrl) ? `https://www.bing.com/images/blob?bcid=${RegExp.$1}` : imageUrl,
+        context: enableSydney ? sydneyPrompts : '',
         options: {
           ...options,
           bingConversationStyle,
-          conversation: chatState.conversation,
         },
         signal: abortController.signal,
         onEvent(event) {
@@ -90,9 +91,9 @@ export function useBing(botId: BotId = 'bing') {
             })
           }
         },
-      })
+      }).catch()
     },
-    [botId, attachmentList, chatState.bot,  chatState.conversation, bingConversationStyle, speaker, setChatState, updateMessage],
+    [botId, enableSydney, attachmentList, chatState.bot, chatState.conversation, bingConversationStyle, speaker, setChatState, updateMessage],
   )
 
   const uploadImage = useCallback(async (imgUrl: string) => {
@@ -137,35 +138,14 @@ export function useBing(botId: BotId = 'bing') {
     }
   }, [hash, setHash, resetConversation])
 
-  // useEffect(() => {
-  //   setChatState((draft) => {
-  //     draft.abortController = undefined
-  //     draft.generatingMessageId = ''
-  //     draft.messages = historyValue.history || []
-  //     draft.conversationId = historyValue.conversationId
-  //     setTimeout(() => {
-  //       window.scrollTo({
-  //         top: document.body.offsetHeight,
-  //         behavior: 'smooth'
-  //       })
-  //     }, 1000)
-  //   })
-  // }, [])
-
   const chat = useMemo(
     () => ({
       botId,
       bot: chatState.bot,
       isSpeaking: speaker.isSpeaking,
       messages: chatState.messages,
-      sendMessage,
-      setInput,
       input,
-      resetConversation,
       generating: !!chatState.generatingMessageId,
-      stopGenerating,
-      uploadImage,
-      setAttachmentList,
       attachmentList,
     }),
     [
@@ -175,17 +155,20 @@ export function useBing(botId: BotId = 'bing') {
       chatState.generatingMessageId,
       chatState.messages,
       speaker.isSpeaking,
-      setInput,
       input,
-      setAttachmentList,
       attachmentList,
-      resetConversation,
-      sendMessage,
-      stopGenerating,
     ],
   )
 
-  return chat
+  return {
+    ...chat,
+    resetConversation,
+    stopGenerating,
+    setInput,
+    uploadImage,
+    setAttachmentList,
+    sendMessage,
+  }
 }
 
 export type BingReturnType = ReturnType<typeof useBing>

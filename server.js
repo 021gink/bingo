@@ -31,8 +31,18 @@ app.prepare().then(() => {
         server.getConnections(function (error, count) {
           res.end(String(count))
         })
+      } if (pathname.endsWith('/create')) {
+        await app.render(req, res, '/api/create', query)
       } else if (pathname.endsWith('/completions')) {
         await app.render(req, res, '/api/openai/chat/completions', query)
+      } else if (pathname.endsWith('/models')) {
+        res.end(JSON.stringify({
+          data: [
+            {
+              id: 'gpt-4',
+            }
+          ],
+        }))
       } else {
         await handle(req, res, parsedUrl)
       }

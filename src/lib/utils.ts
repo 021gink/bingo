@@ -82,7 +82,7 @@ export function parseHeadersFromCurl(content: string) {
   return headers
 }
 
-export const ChunkKeys = ['BING_HEADER', 'BING_HEADER1', 'BING_HEADER2']
+export const ChunkKeys = ['BING_HEADER0', 'BING_HEADER1', 'BING_HEADER2']
 
 export function encodeHeadersToCookie(content: string) {
   const base64Content = btoa(content)
@@ -90,11 +90,8 @@ export function encodeHeadersToCookie(content: string) {
   return ChunkKeys.map((key, index) => `${key}=${contentChunks[index] ?? ''}`)
 }
 
-export function extraCurlFromCookie(cookies: Partial<{ [key: string]: string }>) {
-  let base64Content = ''
-  ChunkKeys.forEach((key) => {
-    base64Content += (cookies[key] || '')
-  })
+export function extraCurlFromCookie(cookies: Partial<{ [key: string]: string }> = {}) {
+  const base64Content = cookies.BING_HEADER || ChunkKeys.map((key) => cookies[key] || '').join('')
   try {
     return atob(base64Content)
   } catch (e) {
@@ -133,7 +130,7 @@ export function parseCookies(cookie: string, cookieNames: string[]) {
 }
 
 export function resetCookies() {
-  [...ChunkKeys, 'BING_COOKIE', 'BING_UA', '_U', 'BING_IP', 'MUID'].forEach(key => setCookie(key, ''))
+  [...ChunkKeys, 'BING_HEADER', '', 'BING_COOKIE', 'BING_UA', '_U', 'BING_IP', 'MUID'].forEach(key => setCookie(key, ''))
 }
 
 export const DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.0.0'
@@ -145,14 +142,16 @@ export function parseUA(ua?: string, default_ua = DEFAULT_UA) {
 
 export function mockUser(cookies: Partial<{ [key: string]: string }>) {
   const {
-    BING_HEADER = process.env.BING_HEADER || '',
+    BING_HEADER,
+    BING_HEADER0 = process.env.BING_HEADER,
     BING_UA = process.env.BING_UA,
-    BING_IP = process.env.BING_IP || '',
+    BING_IP = process.env.BING_IP,
   } = cookies
   const ua = parseUA(BING_UA)
 
   const { _U, MUID } = parseCookies(extraHeadersFromCookie({
     BING_HEADER,
+    BING_HEADER0,
     ...cookies,
   }).cookie, ['MUID'])
 
@@ -163,34 +162,44 @@ export function mockUser(cookies: Partial<{ [key: string]: string }>) {
     'User-Agent': ua!,
     'x-ms-useragent': 'azsdk-js-api-client-factory/1.0.0-beta.1 core-rest-pipeline/1.10.3 OS/Win32',
     'referer': 'https://www.bing.com/search?showconv=1&sendquery=1&q=Bing%20AI&form=MY02CJ&OCID=MY02CJ&OCID=MY02CJ&pl=launch',
-    cookie: `_U=${_U || defaultUID}; MUID=${MUID || muid()}`,
+    cookie: `_U=${_U || defaultUID}; MUID=${MUID || randomString(32)}`,
   }
 }
 
-export function createHeaders(cookies: Partial<{ [key: string]: string }>, type?: 'image') {
+export function cookie2Headers(cookies: Partial<{ [key: string]: string }>) {
   let {
-    BING_HEADER = process.env.BING_HEADER,
-    BING_IP = process.env.BING_IP || '',
+    BING_HEADER,
+    BING_HEADER0 = process.env.BING_HEADER,
+  } = cookies || {}
+  const headers = extraHeadersFromCookie({
+    BING_HEADER,
+    BING_HEADER0,
+    ...cookies,
+  })
+
+  headers['user-agent'] = parseUA(headers['user-agent'])
+  headers['referer'] = 'https://www.bing.com/search?showconv=1&sendquery=1&q=Bing%20AI&form=MY02CJ&OCID=MY02CJ&OCID=MY02CJ&pl=launch'
+  headers['x-ms-useragent'] = headers['x-ms-useragent'] || 'azsdk-js-api-client-factory/1.0.0-beta.1 core-rest-pipeline/1.10.3 OS/Win32'
+  return headers
+}
+
+export function createHeaders(cookies: Partial<{ [key: string]: string }> = {}, useMock?: boolean) {
+  let {
+    BING_HEADER,
+    BING_HEADER0 = process.env.BING_HEADER,
+    BING_IP,
     IMAGE_ONLY = process.env.IMAGE_ONLY ?? '1',
   } = cookies || {}
-  const imageOnly = /^(1|true|yes)$/.test(String(IMAGE_ONLY))
-  if (BING_HEADER) {
-    if (
-      (imageOnly && type === 'image')
-      || !imageOnly
-    ) {
-      const headers = extraHeadersFromCookie({
-        BING_HEADER,
-        ...cookies,
-      })
-      // headers['x-forwarded-for'] = BING_IP || randomIP()
-      headers['user-agent'] = parseUA(headers['user-agent'])
-      headers['referer'] = 'https://www.bing.com/search?showconv=1&sendquery=1&q=Bing%20AI&form=MY02CJ&OCID=MY02CJ&OCID=MY02CJ&pl=launch'
-      headers['x-ms-useragent'] = headers['x-ms-useragent'] || 'azsdk-js-api-client-factory/1.0.0-beta.1 core-rest-pipeline/1.10.3 OS/Win32'
-      return headers
-    }
+  if (useMock == null) {
+    useMock = BING_HEADER ? false : (/^(1|true|yes)$/i.test(String(IMAGE_ONLY)) ? true : !BING_HEADER0)
+  } else if (useMock === false) {
+    cookies.BING_HEADER = ''
   }
-  return mockUser(cookies)
+  const headers = useMock ? mockUser(cookies) : cookie2Headers(cookies)
+  if (BING_IP) {
+    headers['x-forwarded-for'] = BING_IP
+  }
+  return headers
 }
 
 export class WatchDog {
