@@ -16,10 +16,11 @@ import { ChatFeedback } from './chat-feedback'
 import { ChatProgress } from './chat-progress'
 
 export interface ChatMessageProps {
+  index: number
   message: ChatMessageModel
 }
 
-export function ChatMessage({ message, ...props }: ChatMessageProps) {
+export function ChatMessage({ message, index, ...props }: ChatMessageProps) {
   useEffect(() => {
     if (document.body.scrollHeight - window.innerHeight - window.scrollY - 200 < 0) {
       window.scrollBy(0, 200)
@@ -52,6 +53,9 @@ export function ChatMessage({ message, ...props }: ChatMessageProps) {
                   if (w && h) {
                     uri.searchParams.delete('w')
                     uri.searchParams.delete('h')
+                    // delete watermark
+                    uri.searchParams.delete('c')
+                    uri.searchParams.delete('o')
                     return <a style={{ float: 'left', maxWidth: '50%' }} href={uri.toString()} target="_blank" rel="noopener noreferrer"><img src={obj.src} alt={obj.alt} width={w!} height={h!} /></a>
                   }
                 } catch (e) {
@@ -88,7 +92,7 @@ export function ChatMessage({ message, ...props }: ChatMessageProps) {
         </div>
         <div className="text-message-footer">
           {message.author === 'bot' && <LearnMore sourceAttributions={message.sourceAttributions} />}
-          {message.author === 'bot' && <TurnCounter throttling={message.throttling} />}
+          {message.author === 'bot' && <TurnCounter throttling={message.throttling} index={index} />}
         </div>
       </div> : null}
     </div>

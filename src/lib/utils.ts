@@ -9,7 +9,7 @@ import imei from 'node-imei'
 // @ts-ignore
 import randomip from 'random-ip'
 import cidr from './cidr.json'
-import { debug } from './isomorphic'
+import { APIMessage } from './bots/bing/types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -32,6 +32,23 @@ export const nanoid = customAlphabet(
   '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
   7
 ) // 7-character random string
+
+export const messageToContext = (messages: APIMessage[], limit = 32000) => {
+  const messagesClone = [...messages]
+  let cache = []
+  let curLen = 0
+  while(true) {
+    const message = messagesClone.pop()
+    if (!message) break
+    const current = `[${message.role}](#message)\n${message.content?.trim()}\n`
+    if (curLen + current.length >= limit) {
+      break
+    }
+    cache.unshift(current)
+    curLen += (current.length + 1)
+  }
+  return cache.join('\n')
+}
 
 export function createChunkDecoder() {
   const decoder = new TextDecoder()
@@ -149,11 +166,11 @@ export function mockUser(cookies: Partial<{ [key: string]: string }>) {
   } = cookies
   const ua = parseUA(BING_UA)
 
-  const { _U, MUID } = parseCookies(extraHeadersFromCookie({
+  const { _U } = parseCookies(extraHeadersFromCookie({
     BING_HEADER,
     BING_HEADER0,
     ...cookies,
-  }).cookie, ['MUID'])
+  }).cookie, [])
 
   return {
     'x-forwarded-for': BING_IP || randomIP(),
@@ -162,7 +179,7 @@ export function mockUser(cookies: Partial<{ [key: string]: string }>) {
     'User-Agent': ua!,
     'x-ms-useragent': 'azsdk-js-api-client-factory/1.0.0-beta.1 core-rest-pipeline/1.10.3 OS/Win32',
     'referer': 'https://www.bing.com/search?showconv=1&sendquery=1&q=Bing%20AI&form=MY02CJ&OCID=MY02CJ&OCID=MY02CJ&pl=launch',
-    cookie: `_U=${_U || defaultUID}; MUID=${MUID || randomString(32)}`,
+    cookie: `_U=${_U || defaultUID}; MUID=${randomString(32)}`,
   }
 }
 

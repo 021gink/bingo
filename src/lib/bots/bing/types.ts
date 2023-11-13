@@ -15,6 +15,7 @@ export enum ErrorCode {
   BING_IMAGE_UNAUTHORIZED = 'BING_IMAGE_UNAUTHORIZED',
   BING_IP_FORBIDDEN = 'BING_IP_FORBIDDEN',
   BING_TRY_LATER = 'BING_TRY_LATER',
+  BING_ABORT = 'BING_ABORT',
   BING_FORBIDDEN = 'BING_FORBIDDEN',
   BING_CAPTCHA = 'BING_CAPTCHA',
   THROTTLE_LIMIT = 'THROTTLE_LIMIT',
@@ -254,4 +255,12 @@ export interface InvokedSkillsRequestData {
 export interface FileItem {
   url: string;
   status?: 'loading' | 'error' | 'loaded'
+}
+
+export type Role = 'user' | 'assistant'
+export type Action = 'next' | 'variant';
+
+export interface APIMessage {
+  role: Role
+  content: string
 }
