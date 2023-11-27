@@ -340,7 +340,7 @@ export class BingWebBot {
     }
   }
 
-  private async sydneyProxy(params: Params) {
+  private async sydneyProxy(params: Params, reconnect: boolean = false) {
     this.lastText = ''
     const abortController = new AbortController()
     const response = await fetch(this.endpoint + '/api/sydney', {
@@ -353,6 +353,7 @@ export class BingWebBot {
       body: JSON.stringify(this.conversationContext!)
     }).catch(e => {
       console.log('Fetch Error: ', e)
+      if (reconnect) return
       params.onEvent({
         type: 'ERROR',
         error: new ChatError(
@@ -363,10 +364,12 @@ export class BingWebBot {
       return e
     })
     const conversation = this.conversationContext!
+    const originalInvocationId = conversation.invocationId
     conversation.invocationId++
+    if (reconnect) return
 
     if (response.status !== 200) {
-      conversation.invocationId--
+      conversation.invocationId = originalInvocationId
       params.onEvent({
         type: 'ERROR',
         error: new ChatError(
@@ -388,10 +391,8 @@ export class BingWebBot {
     })
 
     const textDecoder = createChunkDecoder()
-    let t
     const timeout = () => {
       if (params.options.retryCount??0 > 5) {
-        conversation.invocationId--
         params.onEvent({
           type: 'ERROR',
           error: new ChatError(
@@ -400,10 +401,12 @@ export class BingWebBot {
           ),
         })
       } else {
+        conversation.invocationId = originalInvocationId
         params.options.retryCount = (params.options.retryCount ?? 0) + 1
-        this.sydneyProxy(params)
+        this.sydneyProxy(params, true)
       }
     }
+    let t = conversation.invocationId ? undefined : setTimeout(timeout, 6000)
     for await (const chunk of streamAsyncIterable(response.body!)) {
       clearTimeout(t)
       t = setTimeout(timeout, 6000)

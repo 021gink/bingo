@@ -44,7 +44,7 @@ Bingo，一个让你呼吸顺畅 New Bing。
  - [x] 支持画图
  - [x] 支持语音输入(支持语音指令，目前仅支持 PC 版 Edge 及 Chrome 浏览器)
  - [x] 支持语音输出(需要手动开启)
- - [x] 支持图片输入
+ - [x] 支持识图（gpt4模式及预设人格模式不支持）
  - [x] 支持自定义域名
  - [x] 支持离线访问
  - [x] 适配深色模式
@@ -212,6 +212,7 @@ Y3VybCAnaHR0cHM6Ly93d3cuYmluZy5jb20vdHVyaW5nL2NvbnZlcnNhdGlvbi9jcmVhdGUnIFwgICAt
 <div align="left">
   <image src="./docs/images/wechat.jpg" width=200 />
   <image src="./docs/images/wechat2.jpg" width=200 />
+  <image src="./docs/images/wechat3.jpg" width=200 />
 </div>
 
 ## Star History
